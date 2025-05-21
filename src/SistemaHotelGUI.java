@@ -15,6 +15,7 @@ public class SistemaHotelGUI extends JFrame {
     private JComboBox<String> listaReservas;
     private java.util.List<JButton> botonesHabitaciones = new java.util.ArrayList<>();
 
+
     public SistemaHotelGUI() {
         hotel = new Hotel();
         inicializarHabitaciones();
@@ -210,6 +211,61 @@ public class SistemaHotelGUI extends JFrame {
         }
     }
 
+    private JPanel crearPanelVerReservas() {
+        JPanel panel = new JPanel(new BorderLayout());
+        String[] columnas = {"ID", "Cliente", "Hab.", "Entrada", "Salida", "Pago", "Check-Out"};
+        DefaultTableModel modelo = new DefaultTableModel(columnas, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return column == 6; // Solo la casilla de check-out es editable
+            }
+
+            @Override
+            public Class<?> getColumnClass(int columnIndex) {
+                return columnIndex == 6 ? Boolean.class : String.class;
+            }
+        };
+
+        reservasTable = new JTable(modelo);
+        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
+
+        for (Reserva r : hotel.getReservas()) {
+            String fechaEntrada = sdf.format(r.getFechaEntrada());
+            String fechaSalida = sdf.format(r.getFechaSalida());
+
+            modelo.addRow(new Object[]{
+                    r.getId(),
+                    r.getHuesped().getNombre(),
+                    r.getHabitacion().getNumero(),
+                    fechaEntrada,
+                    fechaSalida,
+                    r.getPago() != null ? r.getPago().toString() : "Pendiente",
+                    false
+            });
+        }
+
+        JButton btnGuardar = new JButton("Guardar Check-Out");
+        btnGuardar.addActionListener(e -> {
+            for (int i = 0; i < modelo.getRowCount(); i++) {
+                boolean check = Boolean.TRUE.equals(modelo.getValueAt(i, 6));
+                if (check) {
+                    int nro = (int) modelo.getValueAt(i, 2);
+                    for (Habitacion h : hotel.getHabitaciones()) {
+                        if (h.getNumero() == nro) {
+                            h.setDisponible(true);
+                        }
+                    }
+                }
+            }
+            JOptionPane.showMessageDialog(this, "Check-Out procesado");
+            refreshUI();
+        });
+
+        panel.add(new JScrollPane(reservasTable), BorderLayout.CENTER);
+        panel.add(btnGuardar, BorderLayout.SOUTH);
+        return panel;
+    }
+
     private JPanel crearPanelReservas() {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
@@ -294,6 +350,7 @@ public class SistemaHotelGUI extends JFrame {
 
         return panel;
     }
+
 
     private void actualizarListaHabitaciones(JComboBox<String> campoHabitacion, String tipo, boolean accesible) {
         campoHabitacion.removeAllItems();
@@ -382,36 +439,7 @@ public class SistemaHotelGUI extends JFrame {
         return panel;
     }
 
-    private JPanel crearPanelVerReservas() {
-        JPanel panel = new JPanel(new BorderLayout());
-        String[] columnas = {"ID", "Cliente", "Hab.", "Entrada", "Salida", "Pago"};
-        DefaultTableModel modelo = new DefaultTableModel(columnas, 0) {
-            @Override
-            public boolean isCellEditable(int row, int column) {
-                return false;
-            }
-        };
-        reservasTable = new JTable(modelo);
 
-        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
-
-        for (Reserva r : hotel.getReservas()) {
-            String fechaEntrada = sdf.format(r.getFechaEntrada());
-            String fechaSalida = sdf.format(r.getFechaSalida());
-
-            modelo.addRow(new Object[]{
-                    r.getId(),
-                    r.getHuesped().getNombre(),
-                    r.getHabitacion().getNumero(),
-                    fechaEntrada,
-                    fechaSalida,
-                    r.getPago() != null ? r.getPago().toString() : "Pendiente"
-            });
-        }
-
-        panel.add(new JScrollPane(reservasTable), BorderLayout.CENTER);
-        return panel;
-    }
 
     private void actualizarListaHabitaciones(JComboBox<String> campoHabitacion, boolean accesible) {
         campoHabitacion.removeAllItems();
@@ -455,4 +483,3 @@ public class SistemaHotelGUI extends JFrame {
         SwingUtilities.invokeLater(() -> new SistemaHotelGUI().setVisible(true));
     }
 }
-
