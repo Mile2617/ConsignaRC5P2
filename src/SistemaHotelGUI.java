@@ -1,4 +1,3 @@
-// SistemaHotelGUI.java
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
@@ -108,7 +107,7 @@ public class SistemaHotelGUI extends JFrame {
                 }
             }
         };
-        dibujoHotel.setPreferredSize(new Dimension(600, 250));
+        dibujoHotel.setPreferredSize(new Dimension(600, 240));
 
         // Bottom: Room Details Table
         String[] columnas = {"Número", "Tipo", "Precio", "Disponibilidad", "Requerimiento"};
