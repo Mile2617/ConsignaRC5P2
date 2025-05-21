@@ -7,11 +7,16 @@ public class Huesped {
         this.cedula = cedula;
     }
 
-    public String getNombre() { return nombre; }
-    public String getCedula() { return cedula; }
+    public String getNombre() {
+        return nombre;
+    }
+
+    public String getCedula() {
+        return cedula;
+    }
 
     @Override
     public String toString() {
-        return nombre + " (C.I: " + cedula + ")";
+        return nombre;
     }
 }

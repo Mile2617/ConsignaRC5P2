@@ -1,8 +1,9 @@
+import java.text.SimpleDateFormat;
 import java.util.Date;
 
 public class Reserva {
     private static int contador = 1;
-    private int id;
+    private String id;
     private Huesped huesped;
     private Date fechaEntrada;
     private Date fechaSalida;
@@ -10,12 +11,28 @@ public class Reserva {
     private Pago pago;
 
     public Reserva(Huesped huesped, Date fechaEntrada, Date fechaSalida, Habitacion habitacion) {
-        this.id = contador++;
         this.huesped = huesped;
         this.fechaEntrada = fechaEntrada;
         this.fechaSalida = fechaSalida;
         this.habitacion = habitacion;
         this.pago = null;
+
+        // Generar ID personalizado
+        SimpleDateFormat sdf = new SimpleDateFormat("ddMMyy");
+        String fecha = sdf.format(fechaEntrada);
+        this.id = fecha + "HT" + String.format("%02d", contador++);
+    }
+
+    public String getId() { return id; }
+    public Huesped getHuesped() { return huesped; }
+    public Date getFechaEntrada() { return fechaEntrada; }
+    public Date getFechaSalida() { return fechaSalida; }
+    public Habitacion getHabitacion() { return habitacion; }
+    public Pago getPago() { return pago; }
+
+    public void registrarPago(String metodo) {
+        double total = calcularTotal();
+        this.pago = new Pago(metodo, total);
     }
 
     public double calcularTotal() {
@@ -24,17 +41,7 @@ public class Reserva {
         return dias * habitacion.getPrecioPorNoche();
     }
 
-    public void registrarPago(String metodo) {
-        double total = calcularTotal();
-        this.pago = new Pago(metodo, total);
-    }
 
-    public int getId() { return id; }
-    public Huesped getHuesped() { return huesped; }
-    public Date getFechaEntrada() { return fechaEntrada; }
-    public Date getFechaSalida() { return fechaSalida; }
-    public Habitacion getHabitacion() { return habitacion; }
-    public Pago getPago() { return pago; }
 
     @Override
     public String toString() {

@@ -30,6 +30,8 @@ public class SistemaHotelGUI extends JFrame {
         add(tabbedPane);
     }
 
+    private JComboBox<String> listaReservas;
+
     private void inicializarHabitaciones() {
         String[] tipos = {"Suite", "Queen", "Doble", "Individual"};
         int[] precios = {200, 120, 100, 80};
@@ -135,23 +137,47 @@ public class SistemaHotelGUI extends JFrame {
     }
 
     private void refreshUI() {
-        // Refresh the habitaciones table
+        // Actualizar tabla de habitaciones
         actualizarTablaHabitaciones((DefaultTableModel) habitacionesTable.getModel());
 
-        // Refresh the hotel drawing
-        habitacionesTable.getParent().repaint();
-
-        // Refresh other tabs (e.g., reservations)
+        // Actualizar tabla de reservas
         DefaultTableModel reservasModel = (DefaultTableModel) reservasTable.getModel();
         reservasModel.setRowCount(0);
         for (Reserva r : hotel.getReservas()) {
             reservasModel.addRow(new Object[]{
-                    r.getId(), r.getHuesped(), r.getHabitacion().getNumero(),
-                    r.getFechaEntrada(), r.getFechaSalida(),
+                    r.getId(),
+                    r.getHuesped().getNombre(),
+                    r.getHabitacion().getNumero(),
+                    r.getFechaEntrada(),
+                    r.getFechaSalida(),
                     r.getPago() != null ? r.getPago().toString() : "Pendiente"
             });
         }
+
+        // Actualizar tabla de pagos
+        DefaultTableModel pagosModel = (DefaultTableModel) pagosTable.getModel();
+        pagosModel.setRowCount(0);
+        for (Reserva r : hotel.getReservas()) {
+            pagosModel.addRow(new Object[]{
+                    r.getId(),
+                    r.getHabitacion().getNumero(),
+                    r.getHuesped().getNombre(),
+                    String.format("$%.2f", r.calcularTotal()),
+                    r.getPago() != null ? "Pagado" : "Pendiente"
+            });
+        }
+
+        // Actualizar combo box de reservas pendientes
+        if (listaReservas != null) {
+            listaReservas.removeAllItems();
+            for (Reserva r : hotel.getReservas()) {
+                if (r.getPago() == null) {
+                    listaReservas.addItem(r.getId());
+                }
+            }
+        }
     }
+
 
     private JPanel crearPanelReservas() {
         JPanel panel = new JPanel(new BorderLayout());
@@ -183,21 +209,57 @@ public class SistemaHotelGUI extends JFrame {
         JButton btnReservar = new JButton("Reservar");
         btnReservar.addActionListener(e -> {
             try {
-                Huesped h = new Huesped(campoNombre.getText(), campoCedula.getText());
-                int nro = Integer.parseInt((String) campoHabitacion.getSelectedItem());
+                // Validar que todos los campos estén llenos
+                if (campoNombre.getText().isEmpty() || campoCedula.getText().isEmpty() ||
+                        campoHabitacion.getSelectedItem() == null ||
+                        campoEntrada.getModel().getValue() == null ||
+                        campoSalida.getModel().getValue() == null) {
+                    JOptionPane.showMessageDialog(this, "Todos los campos son obligatorios.");
+                    return;
+                }
+
+                // Validar que la fecha de entrada no sea mayor a la de salida
                 Date entrada = (Date) campoEntrada.getModel().getValue();
                 Date salida = (Date) campoSalida.getModel().getValue();
+                if (entrada.after(salida)) {
+                    JOptionPane.showMessageDialog(this, "La fecha de entrada no puede ser mayor a la de salida.");
+                    return;
+                }
+
+                // Crear la reserva
+                Huesped h = new Huesped(campoNombre.getText(), campoCedula.getText());
+                int nro = Integer.parseInt((String) campoHabitacion.getSelectedItem());
                 hotel.crearReserva(h, entrada, salida, nro);
+
+                // Mostrar mensaje de éxito y limpiar los campos
                 JOptionPane.showMessageDialog(this, "Reserva realizada");
+                campoNombre.setText("");
+                campoCedula.setText("");
+                campoHabitacion.removeAllItems();
+                campoEntrada.getModel().setValue(null);
+                campoSalida.getModel().setValue(null);
+                campoAccesible.setSelectedIndex(0);
+
                 refreshUI();
             } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this, "Error en datos");
+                JOptionPane.showMessageDialog(this, "Error en los datos: " + ex.getMessage());
             }
         });
 
         panel.add(form, BorderLayout.CENTER);
         panel.add(btnReservar, BorderLayout.SOUTH);
         return panel;
+    }
+
+
+
+    private void actualizarListaHabitaciones(JComboBox<String> campoHabitacion, boolean accesible) {
+        campoHabitacion.removeAllItems();
+        for (Habitacion h : hotel.getHabitaciones()) {
+            if (h.estaDisponible() && (!accesible || "Apta silla ruedas".equals(h.getRequerimientoAdicional()))) {
+                campoHabitacion.addItem(String.valueOf(h.getNumero()));
+            }
+        }
     }
 
     private JDatePickerImpl crearDatePicker() {
@@ -210,26 +272,27 @@ public class SistemaHotelGUI extends JFrame {
         return new JDatePickerImpl(datePanel, new DateLabelFormatter());
     }
 
-    private void actualizarListaHabitaciones(JComboBox<String> campoHabitacion, boolean accesible) {
-        campoHabitacion.removeAllItems();
-        for (Habitacion h : hotel.getHabitaciones()) {
-            if (h.estaDisponible() && (!accesible || "Apta silla ruedas".equals(h.getRequerimientoAdicional()))) {
-                campoHabitacion.addItem(String.valueOf(h.getNumero()));
-            }
-        }
-    }
+
 
     private JPanel crearPanelVerReservas() {
         JPanel panel = new JPanel(new BorderLayout());
-        String[] columnas = {"ID", "Cliente", "Hab.", "Entrada", "Salida", "Pago"};
+        String[] columnas = {"ID", "Cliente", "Hab.", "Entrada", "Salida", "Pago"}; // Eliminada la columna "Cédula"
         DefaultTableModel modelo = new DefaultTableModel(columnas, 0);
         reservasTable = new JTable(modelo);
 
+        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
+
         for (Reserva r : hotel.getReservas()) {
+            String fechaEntrada = sdf.format(r.getFechaEntrada());
+            String fechaSalida = sdf.format(r.getFechaSalida());
+
             modelo.addRow(new Object[]{
-                    r.getId(), r.getHuesped(), r.getHabitacion().getNumero(),
-                    r.getFechaEntrada(), r.getFechaSalida(),
-                    r.getPago() != null ? r.getPago().toString() : "Pendiente"
+                    r.getId(),                            // ID
+                    r.getHuesped().getNombre(),           // Cliente
+                    r.getHabitacion().getNumero(),        // Nº habitación
+                    fechaEntrada,                         // Entrada formateada
+                    fechaSalida,                          // Salida formateada
+                    r.getPago() != null ? r.getPago().toString() : "Pendiente" // Pago
             });
         }
 
@@ -237,33 +300,75 @@ public class SistemaHotelGUI extends JFrame {
         return panel;
     }
 
-    private JPanel crearPanelPagos() {
-        JPanel panel = new JPanel(new GridLayout(0, 2));
-        JTextField campoId = new JTextField();
-        JTextField campoMetodo = new JTextField();
 
-        panel.add(new JLabel("ID Reserva:")); panel.add(campoId);
-        panel.add(new JLabel("Método de pago:")); panel.add(campoMetodo);
+
+
+    private JPanel crearPanelPagos() {
+        JPanel panel = new JPanel(new BorderLayout());
+
+        String[] columnas = {"ID Reserva", "Habitación", "Nombre", "Total a Pagar", "Estado de Pago"};
+        DefaultTableModel modelo = new DefaultTableModel(columnas, 0);
+        pagosTable = new JTable(modelo);
+
+        for (Reserva r : hotel.getReservas()) {
+            modelo.addRow(new Object[]{
+                    r.getId(),
+                    r.getHabitacion().getNumero(),
+                    r.getHuesped().getNombre(),
+                    String.format("$%.2f", r.calcularTotal()),
+                    r.getPago() != null ? "Pagado" : "Pendiente"
+            });
+        }
+
+        panel.add(new JScrollPane(pagosTable), BorderLayout.CENTER);
+
+        JPanel bottomPanel = new JPanel(new GridLayout(0, 2));
+
+        listaReservas = new JComboBox<>();
+        for (Reserva r : hotel.getReservas()) {
+            if (r.getPago() == null) {
+                listaReservas.addItem(r.getId());
+            }
+        }
+
+        JComboBox<String> listaMetodos = new JComboBox<>(new String[]{
+                "Tarjeta de Crédito", "Tarjeta de Débito", "Efectivo", "Transferencia"
+        });
+
+        bottomPanel.add(new JLabel("ID Reserva:"));
+        bottomPanel.add(listaReservas);
+        bottomPanel.add(new JLabel("Método de Pago:"));
+        bottomPanel.add(listaMetodos);
+
         JButton btnPagar = new JButton("Registrar Pago");
         btnPagar.addActionListener(e -> {
             try {
-                int id = Integer.parseInt(campoId.getText());
-                String metodo = campoMetodo.getText();
+                String id = (String) listaReservas.getSelectedItem();
+                String metodo = (String) listaMetodos.getSelectedItem();
                 hotel.registrarPago(id, metodo);
+
                 JOptionPane.showMessageDialog(this, "Pago registrado");
+                refreshUI();
             } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this, "Error en datos");
+                JOptionPane.showMessageDialog(this, "Error en datos: " + ex.getMessage());
             }
         });
 
-        panel.add(btnPagar);
+        bottomPanel.add(btnPagar);
+        panel.add(bottomPanel, BorderLayout.SOUTH);
+
         return panel;
     }
+
+
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> new SistemaHotelGUI().setVisible(true));
     }
 }
+
+
+
 class DateLabelFormatter extends JFormattedTextField.AbstractFormatter {
     private final String datePattern = "yyyy-MM-dd";
     private final SimpleDateFormat dateFormatter = new SimpleDateFormat(datePattern);

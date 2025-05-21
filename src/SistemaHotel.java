@@ -50,12 +50,12 @@ public class SistemaHotel {
                     break;
                 case 3:
                     System.out.print("ID de la reserva: ");
-                    int id = sc.nextInt();
-                    sc.nextLine();
+                    String id = sc.nextLine();  // ✅ ahora id es un String
                     System.out.print("Método de pago: ");
                     String metodo = sc.nextLine();
-                    hotel.registrarPago(id, metodo);
+                    hotel.registrarPago(id, metodo);  // ✅ sin errores
                     break;
+
                 case 4:
                     hotel.mostrarReservas();
                     break;
